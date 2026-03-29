@@ -368,7 +368,7 @@ else
 GITHUB_USER=your-username
 EXOCORTEX_REPO=$DETECTED_REPO
 WORKSPACE_DIR=$DETECTED_WORKSPACE
-CLAUDE_PATH=$(command -v claude 2>/dev/null || echo '/opt/homebrew/bin/claude')
+CLAUDE_PATH=$(command -v claude 2>/dev/null || echo 'claude')
 CLAUDE_PROJECT_SLUG=$(echo "$DETECTED_WORKSPACE" | tr '/' '-')
 TIMEZONE_HOUR=4
 TIMEZONE_DESC=4:00 UTC
