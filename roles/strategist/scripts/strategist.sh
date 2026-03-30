@@ -156,8 +156,8 @@ acquire_lock() {
             mkdir "$lockdir" || { log "ERROR: failed to acquire lock for $scenario"; exit 1; }
         fi
     fi
-    echo $$ > "$lockdir/pid"
-    trap 'rm -rf "$lockdir" 2>/dev/null' EXIT
+    echo $$ > "$lockdir/pid" || { rm -rf "$lockdir"; log "ERROR: failed to write PID for $scenario"; exit 1; }
+    trap "rm -rf \"$lockdir\" 2>/dev/null" EXIT
 }
 
 # Читаем strategy_day из конфига (L4 Personal)
