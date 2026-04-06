@@ -1,15 +1,14 @@
 Выполни сценарий «Подготовка к сессии стратегирования» для роли Стратег (R1).
 
-Источник сценария: {{WORKSPACE_DIR}}/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/01-strategy-session.md
 
 ## Контекст
 
-- **HUB (личные планы):** {{WORKSPACE_DIR}}/DS-strategy/current/
-- **Документы стратегии:** {{WORKSPACE_DIR}}/DS-strategy/docs/ (ВСЕ файлы: Strategy.md, Dissatisfactions.md, Session Agenda.md)
-- **Inbox:** {{WORKSPACE_DIR}}/DS-strategy/inbox/ ([fleeting-notes.md](https://github.com/{{GITHUB_USER}}/DS-strategy/blob/main/inbox/fleeting-notes.md) + свежие файлы за неделю)
-- **SPOKE (планы репо):** {{WORKSPACE_DIR}}/*/WORKPLAN.md
-- **Стратегические карты:** {{WORKSPACE_DIR}}/*/MAPSTRATEGIC.md (если есть в репо)
-- **MEMORY:** ~/.claude/projects/{{CLAUDE_PROJECT_SLUG}}/memory/MEMORY.md
+- **HUB (личные планы):** /home/user/IWE/DS-strategy/current/
+- **Документы стратегии:** /home/user/IWE/DS-strategy/docs/ (ВСЕ файлы: Strategy.md, Dissatisfactions.md, Session Agenda.md)
+- **Inbox:** /home/user/IWE/DS-strategy/inbox/ ([fleeting-notes.md](https://github.com/max0000max/DS-strategy/blob/main/inbox/fleeting-notes.md) + свежие файлы за неделю)
+- **SPOKE (планы репо):** /home/user/IWE/*/WORKPLAN.md
+- **Стратегические карты:** /home/user/IWE/*/MAPSTRATEGIC.md (если есть в репо)
+- **MEMORY:** ~/.claude/projects/-home-user-IWE/memory/MEMORY.md
 
 ## Именование файлов в current/
 
@@ -73,18 +72,16 @@ DS-strategy/
 
 #### 4. Сверка со стратегией + агрегация MAPSTRATEGIC (→ блок «Стратегическая сверка»)
 
-- Прочитай `DS-strategy/docs/Strategy.md` — желания года, результаты месяца (R), ТОС
-- Прочитай `{{WORKSPACE_DIR}}/*/MAPSTRATEGIC.md` (если файл есть в репо)
+- Прочитай `DS-strategy/docs/Strategy.md` — фокусы года, Q1 цели, приоритеты месяца
+- Прочитай `/home/user/IWE/*/MAPSTRATEGIC.md` (если файл есть в репо)
 - **Агрегируй** фазы из MAPSTRATEGIC.md → обнови секцию «Текущие фазы (MAPSTRATEGIC)» в Strategy.md
-- Обнови ревью-таблицу результатов — статусы R1–RN на основе итогов в WeekPlan
-- **Проверь связность иерархии** (PD.SOTA.001):
-  - Каждый R привязан к НЭП и к желанию года? Если нет — предложить привязку или пометить «off-plan»
-  - Есть ли РП ≥3h без привязки к R? Если да — поднять вопрос на сессии
-- Отметь ТОС-месяца: какой constraint блокирует наибольшее количество R?
+- Обнови «Приоритеты месяца» — статусы на основе итогов в WeekPlan
+- Проверь: соответствуют ли текущие РП стратегическому направлению?
+- Отметь расхождения (РП без привязки к стратегии, или стратегия без РП)
 
 #### 5. Обход WORKPLAN.md (Hub-and-Spoke)
 
-- Прочитай `{{WORKSPACE_DIR}}/*/WORKPLAN.md` из каждого репо
+- Прочитай `/home/user/IWE/*/WORKPLAN.md` из каждого репо
 - Собери все РП со статусом pending/in-progress
 - Выяви расхождения с HUB-планом
 
@@ -141,8 +138,9 @@ agent: Стратег
 
 # WeekPlan W{N}: DD мес — DD мес YYYY
 
-<details>
-<summary><b>Итоги прошлой недели W{N-1}</b></summary>
+---
+
+## Итоги прошлой недели W{N-1}
 
 > Источник: секция «Итоги W{N-1}» из предыдущего WeekPlan
 
@@ -156,9 +154,9 @@ agent: Стратег
 
 > Полные итоги: см. секцию «Итоги W{N-1}» в предыдущем WeekPlan (архив)
 
-</details>
-<details>
-<summary><b>Повестка сессии стратегирования</b></summary>
+---
+
+## Повестка сессии стратегирования
 
 ### Стандартные пункты
 - [ ] Ревью прошлой недели (см. выше)
@@ -166,9 +164,9 @@ agent: Стратег
 - [ ] НЭП: [закрыть X, обсудить Y]
 - [ ] Стратегическая сверка: [расхождения, фазы]
 
-</details>
-<details>
-<summary><b>📋 Inbox Triage (недельный)</b></summary>
+---
+
+## 📋 Inbox Triage (недельный)
 
 > Агрегация заметок за неделю. Источник: fleeting-notes.md + непотреблённые triage-файлы.
 
@@ -189,30 +187,29 @@ agent: Стратег
 ### Вопросы для обсуждения
 1. ...
 
-</details>
-<details>
-<summary><b>Приоритеты месяца</b></summary>
+---
 
+## Приоритеты месяца
 [обновлённые приоритеты]
 
-</details>
-<details open>
-<summary><b>План на неделю W{N}</b></summary>
+---
 
-| 🚦 | # | РП | h | Статус | → R# |
-|----|---|-----|---|--------|------|
-| 🔴 | ... | ... | ... | pending | R{N} |
+## План на неделю W{N}
 
-**Бюджет недели:** ~Nh РП / ~Nh физ / Мультипликатор ~Nx
+| # | РП | Бюджет | Статус | Дедлайн | Репо |
+|---|-----|--------|--------|---------|------|
+| ... | ... | ... | pending | ... | ... |
 
-</details>
-<details open>
-<summary><b>План на понедельник</b></summary>
+**Бюджет недели:** ~Nh
 
-| 🚦 | # | РП | h | Статус | → R# |
-|----|---|-----|---|--------|------|
-| ⚫ | — | **Сессия стратегирования: утвердить план** | 1.5 | pending | — |
-| ... | ... | ... | ... | ... | ... |
+---
+
+## План на понедельник
+
+| # | РП | Бюджет | Приоритет |
+|---|-----|--------|-----------|
+| — | **Сессия стратегирования: утвердить план** | 1h | обязательно |
+| ... | ... | ... | ... |
 
 ---
 
@@ -229,7 +226,7 @@ agent: Стратег
 
 > **Правило:** По итогам стратегирования обновлять Strategy.md и все затронутые WORKPLAN.md. Это гарантирует, что данные не устаревают между сессиями.
 
-1. **Strategy.md** — обновить результаты месяца (статусы, бюджеты), проверить Q→R связи (колонка `→ Q#`), обновить ревью-таблицу
+1. **Strategy.md** — обновить «Приоритеты месяца» (статусы, бюджеты, новые приоритеты)
 2. **WORKPLAN.md** — для каждого репо, упомянутого в WeekPlan:
    - Обновить статусы РП (done/in_progress/pending)
    - Добавить новые РП

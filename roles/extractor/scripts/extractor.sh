@@ -13,11 +13,11 @@ set -e
 # Конфигурация
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
-WORKSPACE="{{WORKSPACE_DIR}}"
+WORKSPACE="/home/user/IWE"
 PROMPTS_DIR="$REPO_DIR/prompts"
-LOG_DIR="{{HOME_DIR}}/logs/extractor"
-CLAUDE_PATH="{{CLAUDE_PATH}}"
-ENV_FILE="{{HOME_DIR}}/.config/aist/env"
+LOG_DIR="/home/user/logs/extractor"
+CLAUDE_PATH="/home/user/.local/bin/kimi"
+ENV_FILE="/home/user/.config/aist/env"
 
 # AI CLI: переопределение через переменные окружения (см. strategist.sh)
 AI_CLI="${AI_CLI:-$CLAUDE_PATH}"

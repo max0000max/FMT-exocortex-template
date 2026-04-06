@@ -5,6 +5,16 @@ All notable changes to FMT-exocortex-template will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
 
+## [0.22.0] — 2026-04-06
+
+### Added
+- **verify SKILL.md** — два новых типа верификации: `chain` (data flow check, CoVe stage 3) и `adversarial` (scope & bias check, pre-mortem). Context isolation sub-agent с чеклистами
+- **day-close.sh** — маппинг dir→source из L2 (sources.json) + L4 (sources-personal.json). Раздельные вызовы selective-reindex через SOURCES_CONFIG. Фикс хронического reindex failure с 20 марта
+
+### Changed
+- **verify SKILL.md** — обновлена нумерация шагов (0→4), unified verdict формат, автоопределение chain/adversarial по контексту
+- **update-manifest.json** → v0.22.0
+
 ## [0.21.0] — 2026-03-29
 
 ### Added
@@ -381,7 +391,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - **README.md:** `git clone` → `gh repo fork --clone` (согласованность с SETUP-GUIDE)
 - **strategist.sh:** `cleanup-processed-notes.py` → `.sh` (файл .py не существовал)
 - **strategist.sh:** хардкод авторского пути к notify.sh → относительный через `$SCRIPT_DIR`
-- **strategist.sh, dt-collect.sh:** `$HOME/IWE` → `{{WORKSPACE_DIR}}` (подставляется setup.sh)
+- **strategist.sh, dt-collect.sh:** `$HOME/IWE` → `/home/user/IWE` (подставляется setup.sh)
 - **update.sh:** нумерация шагов `[1/4],[2/4]` → `[1/6],[2/6]`
 - **setup-wakatime.md:** `wakatime-cli` → `~/.wakatime/wakatime-cli` (полный путь)
 - **SETUP-GUIDE.md:** MCP-команды отделены от bash-блока (пользователи пытались запускать в терминале)

@@ -63,7 +63,8 @@
 | Документ/чеклист | `memory/checklists.md` |
 
 Политика: ≤11 файлов. Справочники ≤100 строк. Протоколы ≤150. MEMORY.md ≤100 строк.
-Рабочая директория: `{{WORKSPACE_DIR}}/` (не из sub-директорий). `{{WORKSPACE_DIR}}/memory/` = симлинк на auto-memory.
+Temporal metadata: `valid_from: YYYY-MM-DD` (обязательно при создании), `superseded_by: <файл>` (при устаревании). Подробности → `protocol-work.md § 2`.
+Рабочая директория: `/home/user/IWE/` (не из sub-директорий). `/home/user/IWE/memory/` = симлинк на auto-memory.
 
 ## 5. АрхГейт — ОБЯЗАТЕЛЬНАЯ оценка
 
@@ -124,18 +125,21 @@
 ### Именование
 
 - `DS-strategy` (не `DS-strategy`) — личный governance-хаб
-- `{{WORKSPACE_DIR}}/` — рабочая директория
+- `/home/user/IWE/` — рабочая директория
 
 ### Read-only репо
 
-> **DS-IT-systems/SystemsSchool_bot** — ⛔ READ-ONLY.
-> **DS-IT-systems/aisystant** — ⛔ READ-ONLY.
 
 ### Extensions Gate (БЛОКИРУЮЩЕЕ)
 
-**Кастомизация протоколов/скиллов → ТОЛЬКО в `extensions/*.md`.**
-Прямое редактирование `.claude/skills/` или `memory/protocol-*.md` = ошибка: сотрётся при `update.sh`.
-Авторское → `extensions/`. Платформенное → `FMT-exocortex-template`, затем `update.sh`.
+**Для пользователей:** кастомизация протоколов/скиллов → ТОЛЬКО в `extensions/*.md`.
+Прямое редактирование `.claude/skills/` или `memory/protocol-*.md` = ошибка.
+**Архитектурное обоснование:** платформенные файлы (L1) и пользовательские расширения (L3) -- разные слои. Смешение слоёв = хрупкость при обновлении. Разделение: платформенное → `FMT-exocortex-template` → `update.sh`. Пользовательское → `extensions/` + `params.yaml`.
+
+**Для автора шаблона (`params.yaml → author_mode: true`):** прямое редактирование L1 файлов РАЗРЕШЕНО.
+- **Flow:** авторский IWE (source-of-truth) → `template-sync.sh` → FMT (с плейсхолдерами) → GitHub → `update.sh` → пользователи.
+- **Правило:** L1 изменение → редактировать в авторском IWE → запустить template-sync → коммит FMT.
+- **Запрещено:** редактировать FMT напрямую (template-sync перезатрёт при следующем sync).
 
 
 ### README.md (FMT-exocortex-template)

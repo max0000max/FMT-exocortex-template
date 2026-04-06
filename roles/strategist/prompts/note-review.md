@@ -1,15 +1,14 @@
 Выполни сценарий «Ежедневный разбор заметок» для роли Стратег (R1).
 
-Источник сценария: {{WORKSPACE_DIR}}/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/note-review.md
 
 ## Контекст
 
-- **Заметки:** {{WORKSPACE_DIR}}/DS-strategy/inbox/[fleeting-notes.md](https://github.com/{{GITHUB_USER}}/DS-strategy/blob/main/inbox/fleeting-notes.md)
-- **НЭП:** {{WORKSPACE_DIR}}/DS-strategy/docs/Dissatisfactions.md
-- **Стратегия:** {{WORKSPACE_DIR}}/DS-strategy/docs/Strategy.md
-- **План недели:** {{WORKSPACE_DIR}}/DS-strategy/current/WeekPlan W*.md
-- **Inbox Экстрактора:** {{WORKSPACE_DIR}}/DS-strategy/inbox/captures.md
-- **MEMORY:** ~/.claude/projects/{{CLAUDE_PROJECT_SLUG}}/memory/MEMORY.md
+- **Заметки:** /home/user/IWE/DS-strategy/inbox/[fleeting-notes.md](https://github.com/max0000max/DS-strategy/blob/main/inbox/fleeting-notes.md)
+- **НЭП:** /home/user/IWE/DS-strategy/docs/Dissatisfactions.md
+- **Стратегия:** /home/user/IWE/DS-strategy/docs/Strategy.md
+- **План недели:** /home/user/IWE/DS-strategy/current/WeekPlan W*.md
+- **Inbox Экстрактора:** /home/user/IWE/DS-strategy/inbox/captures.md
+- **MEMORY:** ~/.claude/projects/-home-user-IWE/memory/MEMORY.md
 
 ## Предусловие
 
@@ -74,12 +73,12 @@
 - **Личные данные → personal/:** контакт → `personal/contacts.md`, аккаунт/URL → `personal/accounts.md`, токен/пароль → `personal/secrets.md`, прочее → `personal/reference.md`
 
 **Проверка актуальности (обязательно перед классификацией):**
-- Сверь заметку с коммитами за сегодня (`git log --since="00:00" --all --oneline` по всем {{WORKSPACE_DIR}}/ репо) и текущим WeekPlan
+- Сверь заметку с коммитами за сегодня (`git log --since="00:00" --all --oneline` по всем /home/user/IWE/ репо) и текущим WeekPlan
 - Если задача из заметки **уже сделана** (есть коммит или РП done) → Шум (зачеркнуть), не тянуть в план
 - Если проблема из заметки **уже решена** → Шум
 - Если заметка ссылается на ситуацию, которая **изменилась** за день → оценить с учётом нового контекста
 - Пользователь мог написать утром, а к вечеру всё уже сделал — не создавай лишних предложений
-- **Сопоставление с РП (для ВСЕХ категорий, включая Идею 🔄):** Перед классификацией любой заметки — проверь по MEMORY.md: совпадает ли intent заметки с существующим РП? Проверяй НЕ только название РП, но и описание результатов (✅ строки). Пример: заметка «Сделать стандарт описания роли» покрыта РП #54 (DP.D.033 Role-Centric Architecture) — даже если РП in_progress, конкретный результат done. Если покрыто → Шум (зачеркнуть, указать «Реализовано: РП #N, артефакт»), НЕ ставить 🔄. Правило: **заметка, чей intent уже реализован = Шум, независимо от статуса РП**
+- **Сопоставление с РП (для ВСЕХ категорий, включая Идею 🔄):** Перед классификацией любой заметки — проверь по MEMORY.md: совпадает ли intent заметки с существующим РП? Проверяй НЕ только название РП, но и описание результатов (✅ строки). Пример: заметка «Сделать стандарт описания роли» покрыта РП #N (DP.D.033 Role-Centric Architecture) — даже если РП in_progress, конкретный результат done. Если покрыто → Шум (зачеркнуть, указать «Реализовано: РП #N, артефакт»), НЕ ставить 🔄. Правило: **заметка, чей intent уже реализован = Шум, независимо от статуса РП**
 - **Личные задачи:** Заметки с конкретным действием и сроком (в т.ч. личные, бытовые, семейные) → категория **Задача**. Записывать в WeekPlan с дедлайном. НЕ отбрасывать как «нерелевантные». Недельный план включает ВСЕ задачи: рабочие + личные. Нумерация личных: Л1, Л2, ...
 
 #### 4. Пометить заметки в fleeting-notes.md
@@ -160,7 +159,6 @@
 - "краткий текст заметки" → рекомендую черновик: [предлагаемое название]. Концепты: [список]. Target: заготовка | pack | рп
 ```
 
-> **Черновик ≠ Заготовка.** Черновик — личный, в DS-strategy. Заготовка — публичная, в DS-Knowledge-Index (status: draft).
 > **Guards:** ≤5 черновиков = норма. 6-10 = ⚠️ предупреждение в рекомендации. >10 = 🛑 не рекомендовать новые.
 
 #### 7. Записать личные данные в personal/

@@ -6,7 +6,7 @@
       "args": ["-y", "--prefer-offline", "{{KNOWLEDGE_MCP_PACKAGE}}"],
       "env": {
         "DATABASE_URL": "{{KNOWLEDGE_MCP_DATABASE_URL}}",
-        "USER_ID": "{{GITHUB_USER}}"
+        "USER_ID": "max0000max"
       }
     },
 
@@ -15,7 +15,7 @@
       "args": ["-y", "--prefer-offline", "{{DIGITAL_TWIN_MCP_PACKAGE}}"],
       "env": {
         "DATABASE_URL": "{{DIGITAL_TWIN_DATABASE_URL}}",
-        "USER_ID": "{{GITHUB_USER}}"
+        "USER_ID": "max0000max"
       }
     }
 

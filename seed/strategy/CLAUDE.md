@@ -12,7 +12,7 @@
 
 ## Роль: Стратег (R1)
 
-При работе в этом репо Claude Code исполняет роль **Стратег** (R1, DP.D.033 §7).
+При работе в этом репо Claude Code исполняет роль **Стратег** (R1, DP.D.033 §4).
 
 ### Ключевые задачи
 
@@ -22,10 +22,10 @@
 
 ### WORKPLAN.md — Hub-and-Spoke
 
-Каждый репозиторий в `{{WORKSPACE_DIR}}/` содержит `WORKPLAN.md` в корне с текущими РП.
+Каждый репозиторий в `/home/user/IWE/` содержит `WORKPLAN.md` в корне с текущими РП.
 
 **Агрегация:** При создании плана дня/недели Стратег:
-1. Обходит все `{{WORKSPACE_DIR}}/*/WORKPLAN.md`
+1. Обходит все `/home/user/IWE/*/WORKPLAN.md`
 2. Собирает РП со статусом pending/in-progress
 3. Формирует агрегированный план в `current/`
 
@@ -38,16 +38,16 @@
 **КРИТИЧЕСКИ ВАЖНО:** При сборе коммитов ВСЕГДА проверять ВСЕ репозитории:
 
 ```bash
-for repo in $(ls {{WORKSPACE_DIR}}/); do
-  if [ -d {{WORKSPACE_DIR}}/$repo/.git ]; then
-    echo "=== $repo ===" && cd {{WORKSPACE_DIR}}/$repo && git log --oneline --since="1 week ago" 2>/dev/null
+for repo in $(ls /home/user/IWE/); do
+  if [ -d /home/user/IWE/$repo/.git ]; then
+    echo "=== $repo ===" && cd /home/user/IWE/$repo && git log --oneline --since="1 week ago" 2>/dev/null
   fi
 done
 ```
 
 ## Work-Product Gate (правило РП-шлюза)
 
-> **Полное описание:** `{{WORKSPACE_DIR}}/CLAUDE.md` секция 2.
+> **Полное описание:** `/home/user/IWE/CLAUDE.md` секция 2.
 
 **БЛОКИРУЮЩЕЕ ПРАВИЛО.** Выполняется ДО ЛЮБОГО действия по задаче.
 
