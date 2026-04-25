@@ -3,7 +3,6 @@
 
 Выполни сценарий Day Plan для роли Стратег (R1).
 
-Источник сценария: /home/user/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/02-day-plan.md
 
 ## Контекст
 
@@ -84,24 +83,7 @@ git -C /home/user/IWE/<repo> log --since="yesterday 00:00" --until="today 00:00"
   - Добавь в таблицу «План на сегодня» колонку «Контекст» со ссылкой на файл
   - В секцию «Рекомендация» включи: текущее состояние из context file, следующий шаг
 
-### 3c. Проверка незалитых коммитов бота (pilot → new-architecture)
-
-> **ВАЖНО:** Используй `git cherry`, а НЕ `git log A..B`. Cherry-pick создаёт новые SHA — `git log` считает их «отсутствующими», хотя содержимое идентичное. `git cherry` сравнивает по patch-id (содержимому).
-
-```bash
-# Коммиты на pilot, отсутствующие на prod (+ = реально отсутствует, - = уже cherry-picked)
-git -C /home/user/IWE/DS-IT-systems/aist_pilot_bot cherry -v new-architecture pilot 2>/dev/null | grep '^\+'
-# Коммиты на prod, отсутствующие на pilot (обратное направление)
-git -C /home/user/IWE/DS-IT-systems/aist_pilot_bot cherry -v pilot new-architecture 2>/dev/null | grep '^\+'
-```
-
-- Если есть коммиты с `+` в любом направлении → добавить в DayPlan секцию с ТОЧНЫМ числом:
-  ```
-  **🤖 Бот: рассинхрон веток:** N коммитов на pilot (не на prod), M коммитов на prod (не на pilot). Команда для синхронизации: «мержи на прод».
-  ```
-- Если коммитов с `+` нет → не включать секцию (ветки синхронизированы)
-
-> Сценарий merge: PROCESSES.md § 4.2. Merge выполняется ТОЛЬКО по команде пользователя.
+<!-- YOUR CUSTOM CHECKS HERE -->
 
 ### 3b. Inbox Triage (заметки за вчера)
 
@@ -110,7 +92,7 @@ git -C /home/user/IWE/DS-IT-systems/aist_pilot_bot cherry -v pilot new-architect
 
 - Проверь `DS-strategy/inbox/fleeting-notes.md` — есть ли **жирные** заметки
 - Если есть (≥1) — выполни мини-триаж inline:
-  1. Классифицируй каждую жирную заметку по 4 категориям: НЭП / Задача / Знание доменное / Знание реализационное / Черновик / Личные данные / Шум
+  1. Классифицируй каждую жирную заметку по 7 категориям: НЭП / Задача / Знание доменное / Знание реализационное / Черновик / Личные данные / Шум
   2. Сверь с коммитами за вчера (шаг 1) — что уже сделано? (уже сделано → Шум)
   3. Сформируй секцию `📋 Inbox Triage` со всеми корзинами (включая 📝 если есть зёрна для черновиков)
   4. **НЕ** помечай заметки и **НЕ** архивируй — это делает только Note-Review
