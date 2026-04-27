@@ -12,7 +12,7 @@
 #
 set -e
 
-VERSION="2.0.0"
+VERSION="2.1.0"  # WP-273 Этап 2: Generated runtime architecture (F)
 REPO="TserenTserenov/FMT-exocortex-template" # UPSTREAM-CONST: do not substitute
 BRANCH="main"
 RAW_BASE="https://raw.githubusercontent.com/$REPO/$BRANCH"
@@ -302,13 +302,21 @@ for f in "${UPDATED_FILES[@]}"; do
     APPLIED=$((APPLIED + 1))
 done
 
-# === Step 5b: Re-substitute placeholders in new/updated files ===
-# After downloading from upstream, files contain {{PLACEHOLDERS}}.
-# Read saved configuration from .exocortex.env (created by setup.sh).
+# === Step 5b: Re-substitute placeholders + ensure .exocortex.env in workspace ===
+# WP-273 Этап 2: substituted-файлы живут в $WORKSPACE_DIR/.iwe-runtime/, не в FMT.
+# Substitution в FMT-файлах больше НЕ выполняется. CLAUDE.md substitute отдельно (3-way merge).
+# Поиск .exocortex.env: workspace (Variant F) → FMT (legacy ≤0.28.x).
 echo ""
 echo "Подстановка переменных..."
 
-ENV_FILE="$SCRIPT_DIR/.exocortex.env"
+if [ -f "$WORKSPACE_DIR/.exocortex.env" ]; then
+    ENV_FILE="$WORKSPACE_DIR/.exocortex.env"
+elif [ -f "$SCRIPT_DIR/.exocortex.env" ]; then
+    ENV_FILE="$SCRIPT_DIR/.exocortex.env"
+    echo "  ⚠ .exocortex.env найден в FMT (legacy). Будет мигрирован в \$WORKSPACE_DIR/ при первом setup ≥0.7.0."
+else
+    ENV_FILE="$WORKSPACE_DIR/.exocortex.env"  # для дальнейшего автогенерирования (миграция С5)
+fi
 
 if [ -f "$ENV_FILE" ]; then
     # Validate: only KEY=VALUE lines allowed (no shell commands)
@@ -331,34 +339,62 @@ if [ -f "$ENV_FILE" ]; then
             declare "ENV_$key=$value"
         done < "$ENV_FILE"
 
-        PLACEHOLDER_HIT=0
-        for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
-            filepath="$SCRIPT_DIR/$f"
-            [ -f "$filepath" ] || continue
-
-            if grep -q '{{[A-Z_]*}}' "$filepath" 2>/dev/null; then
-                sed_inplace \
-                    -e "s|{{GITHUB_USER}}|${ENV_GITHUB_USER:-}|g" \
-                    -e "s|{{WORKSPACE_DIR}}|${ENV_WORKSPACE_DIR:-}|g" \
-                    -e "s|{{CLAUDE_PATH}}|${ENV_CLAUDE_PATH:-}|g" \
-                    -e "s|{{CLAUDE_PROJECT_SLUG}}|${ENV_CLAUDE_PROJECT_SLUG:-}|g" \
-                    -e "s|{{TIMEZONE_HOUR}}|${ENV_TIMEZONE_HOUR:-}|g" \
-                    -e "s|{{TIMEZONE_DESC}}|${ENV_TIMEZONE_DESC:-}|g" \
-                    -e "s|{{HOME_DIR}}|${ENV_HOME_DIR:-$HOME}|g" \
-                    "$filepath"
-                PLACEHOLDER_HIT=$((PLACEHOLDER_HIT + 1))
-            fi
-
-            # (Repo rename removed — FMT-exocortex-template stays as-is)
-        done
-
-        if [ "$PLACEHOLDER_HIT" -gt 0 ]; then
-            echo "  Подставлено переменных в $PLACEHOLDER_HIT файлах."
-        fi
+        # WP-273 Этап 2: substitution в FMT-файлах больше НЕ выполняется.
+        # Substituted значения генерируются build-runtime.sh в .iwe-runtime/ (Step 6d ниже, ПЕРЕД roles reinstall).
+        # Это закрывает R4.6 (self-heal): build-runtime идемпотентен, повторный запуск
+        # update.sh пересоздаёт runtime даже если предыдущий прервался.
+        :  # placeholder substitution NO-OP в FMT
 
         # === Preserve secrets: L4_BACKEND, L4_DATABASE_URL ===
         # These are NOT substituted into template files.
         # If they exist in .exocortex.env, they must NOT be overwritten by update.sh.
+
+        # === Auto-add GOVERNANCE_REPO + IWE_TEMPLATE to legacy .exocortex.env (0.28.5+) ===
+        # Если .exocortex.env создан до 0.28.5 — этих ключей нет; дописать.
+        if ! grep -q '^GOVERNANCE_REPO=' "$ENV_FILE" 2>/dev/null; then
+            # Resolve workspace: ENV_WORKSPACE_DIR (если есть) → fallback dirname $SCRIPT_DIR
+            DETECT_WS="${ENV_WORKSPACE_DIR:-$(dirname "$SCRIPT_DIR")}"
+            DETECTED_GOV=""
+            if [ -d "${DETECT_WS}/DS-strategy" ]; then
+                DETECTED_GOV="DS-strategy"
+            else
+                for d in "${DETECT_WS}"/DS-*; do
+                    case "${d##*/}" in
+                        DS-*strategy*) DETECTED_GOV="${d##*/}"; break ;;
+                    esac
+                done
+            fi
+            if [ -z "$DETECTED_GOV" ]; then
+                DETECTED_GOV="DS-strategy"
+                echo "  ⚠ Governance repo не найден в $DETECT_WS — fallback DS-strategy. Проверьте .exocortex.env вручную."
+            fi
+            echo "GOVERNANCE_REPO=$DETECTED_GOV" >> "$ENV_FILE"
+            echo "  ✓ Добавлено GOVERNANCE_REPO=$DETECTED_GOV в .exocortex.env (миграция 0.28.5)"
+            ENV_GOVERNANCE_REPO="$DETECTED_GOV"
+        fi
+        if ! grep -q '^IWE_TEMPLATE=' "$ENV_FILE" 2>/dev/null; then
+            echo "IWE_TEMPLATE=$SCRIPT_DIR" >> "$ENV_FILE"
+            echo "  ✓ Добавлено IWE_TEMPLATE=$SCRIPT_DIR в .exocortex.env (миграция 0.28.5)"
+            ENV_IWE_TEMPLATE="$SCRIPT_DIR"
+        fi
+
+        # === WP-273 Этап 2: IWE_RUNTIME для Generated runtime architecture (F) ===
+        if ! grep -q '^IWE_RUNTIME=' "$ENV_FILE" 2>/dev/null; then
+            DETECT_WS_RT="${ENV_WORKSPACE_DIR:-$WORKSPACE_DIR}"
+            echo "IWE_RUNTIME=$DETECT_WS_RT/.iwe-runtime" >> "$ENV_FILE"
+            echo "  ✓ Добавлено IWE_RUNTIME=$DETECT_WS_RT/.iwe-runtime (миграция WP-273 → 0.29.0)"
+            ENV_IWE_RUNTIME="$DETECT_WS_RT/.iwe-runtime"
+        fi
+
+        # === Migrate .exocortex.env from FMT to workspace (WP-273 Этап 2) ===
+        # Если .exocortex.env живёт в FMT (legacy ≤0.28.x), копируем в workspace.
+        # FMT остаётся read-only. Workspace = source-of-truth user state.
+        if [ "$ENV_FILE" = "$SCRIPT_DIR/.exocortex.env" ] && [ ! -f "$WORKSPACE_DIR/.exocortex.env" ]; then
+            cp "$ENV_FILE" "$WORKSPACE_DIR/.exocortex.env"
+            chmod 600 "$WORKSPACE_DIR/.exocortex.env"
+            echo "  ✓ .exocortex.env скопирован в $WORKSPACE_DIR/ (миграция WP-273 → 0.29.0)"
+            echo "    Старая копия в FMT остаётся для backward compat; уберите вручную после проверки."
+        fi
 
         # === Migrate ~/.iwe-env if present (Ф8 migration scenario) ===
         IWE_ENV_GLOBAL="$HOME/.iwe-env"
@@ -422,11 +458,18 @@ ENVEOF
     done
 fi
 
-# Check remaining placeholders
-REMAINING=$(grep -rl '{{[A-Z_]*}}' "$SCRIPT_DIR" --include="*.md" --include="*.sh" --include="*.json" --include="*.yaml" --include="*.yml" 2>/dev/null | wc -l | tr -d ' ')
-if [ "$REMAINING" -gt 0 ]; then
-    echo "  ⚠ $REMAINING файлов содержат незаменённые переменные."
-    echo "  Проверьте .exocortex.env и перезапустите: bash update.sh"
+# Check remaining placeholders.
+# WP-273 0.29.4 R6.2 fix: раньше сканировали $SCRIPT_DIR (FMT) — но в FMT
+# плейсхолдеры это by design (clean upstream). Получали навсегда «⚠ 54 файлов
+# содержат незаменённые переменные» у каждого пилота на каждом update.
+# Проверяем теперь .iwe-runtime/ — там их быть не должно после build-runtime.
+RUNTIME_CHECK_DIR="${WORKSPACE_DIR}/.iwe-runtime"
+if [ -d "$RUNTIME_CHECK_DIR" ]; then
+    REMAINING=$(grep -rl '{{[A-Z_]*}}' "$RUNTIME_CHECK_DIR" --include="*.md" --include="*.sh" --include="*.json" --include="*.yaml" --include="*.yml" --include="*.plist" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$REMAINING" -gt 0 ]; then
+        echo "  ⚠ $REMAINING файлов в .iwe-runtime/ содержат незаменённые переменные."
+        echo "  Проверьте .exocortex.env (значения placeholders) и перезапустите: bash $SCRIPT_DIR/setup/build-runtime.sh"
+    fi
 fi
 
 # === Step 6: Reinstall platform-space ===
@@ -500,9 +543,10 @@ if [ -d "$CLAUDE_MEMORY_DIR" ]; then
     echo "  ✓ memory/MEMORY.md — не тронут"
 fi
 
-# Propagate skills, hooks, rules to workspace if changed
+# Propagate skills, hooks, rules, lib, config, detectors to workspace if changed.
+# lib/config/detectors — runtime dependencies капчер-шины (capture-bus.sh) и детекторов.
 for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
-    case "$f" in .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/settings.json)
+    case "$f" in .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/lib/*|.claude/config/*|.claude/detectors/*|.claude/settings.json)
         src="$SCRIPT_DIR/$f"
         dst="$WORKSPACE_DIR/$f"
         mkdir -p "$(dirname "$dst")"
@@ -632,7 +676,22 @@ if [ -f "$MCP_WORKSPACE" ] && [ -f "$MCP_USER" ]; then
     fi
 fi
 
-# Reinstall roles if changed
+# === Step 6d: Rebuild generated runtime ПЕРЕД roles reinstall (WP-273 R5 fix) ===
+# Round 5 Евгения обнаружил порядковую проблему: roles reinstall вызывался ДО build-runtime,
+# из-за чего install.sh брал плисты из устаревшего .iwe-runtime/ или legacy FMT с placeholder'ами.
+# Правильный порядок: сначала пересобрать .iwe-runtime/ из актуального FMT + .exocortex.env,
+# потом install.sh каждой роли (чтение из свежего runtime).
+if [ -x "$SCRIPT_DIR/setup/build-runtime.sh" ] || [ -f "$SCRIPT_DIR/setup/build-runtime.sh" ]; then
+    echo ""
+    echo "Generated runtime (.iwe-runtime/)..."
+    bash "$SCRIPT_DIR/setup/build-runtime.sh" \
+        --workspace "$WORKSPACE_DIR" \
+        --env-file "${WORKSPACE_DIR}/.exocortex.env" \
+        --quiet 2>&1 | sed 's/^/  /' || \
+        echo "  ⚠ build-runtime.sh завершился с ошибкой. Запустите вручную: bash $SCRIPT_DIR/setup/build-runtime.sh"
+fi
+
+# Reinstall roles if changed (ПОСЛЕ build-runtime — install читает из свежего .iwe-runtime/)
 ROLES_CHANGED=false
 for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
     case "$f" in roles/*)
@@ -645,6 +704,8 @@ done
 if $ROLES_CHANGED && command -v launchctl >/dev/null 2>&1; then
     echo ""
     echo "Роли обновлены. Переустановка..."
+    # Source ~/.iwe-paths (если есть) — гарантирует IWE_RUNTIME/IWE_TEMPLATE в env для install.sh
+    [ -f "$HOME/.iwe-paths" ] && . "$HOME/.iwe-paths"
     for role_dir in "$SCRIPT_DIR"/roles/*/; do
         [ -f "$role_dir/install.sh" ] && [ -f "$role_dir/role.yaml" ] || continue
         if grep -q 'auto:.*true' "$role_dir/role.yaml" 2>/dev/null; then
@@ -665,6 +726,26 @@ if ! git diff --quiet 2>/dev/null || [ -n "$(git ls-files --others --exclude-sta
     echo "  ✓ Изменения закоммичены"
 else
     echo "  Нет изменений для коммита"
+fi
+
+# === Step 7.5: Migration hint — initial-marker для old clones (0.28.5+) ===
+# Если у пользователя есть Strategy.md без маркера IWE-INITIAL-NEEDED — намекнуть.
+# Это для пользователей, склонировавших до 0.28.5 (skeleton-marker появился в 0.28.5).
+# WP-273 0.29.4 R6.4 fix: после WP-273 .exocortex.env живёт в workspace, не в FMT.
+# Раньше использовали $SCRIPT_DIR (FMT) → файла там нет → hint никогда не показывался.
+ENV_FILE="${WORKSPACE_DIR}/.exocortex.env"
+if [ -f "$ENV_FILE" ]; then
+    ENV_WS=$(grep -E '^WORKSPACE_DIR=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+    ENV_GOV=$(grep -E '^GOVERNANCE_REPO=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+    USER_STRATEGY="${ENV_WS:-}/${ENV_GOV:-DS-strategy}/docs/Strategy.md"
+    if [ -f "$USER_STRATEGY" ] && ! grep -qF 'IWE-INITIAL-NEEDED' "$USER_STRATEGY"; then
+        if grep -qE '^created: YYYY-MM-DD$|^updated: YYYY-MM-DD$' "$USER_STRATEGY" 2>/dev/null; then
+            echo ""
+            echo "⚠ Strategy.md выглядит как seed-скелет, но без маркера IWE-INITIAL-NEEDED (0.28.5+)."
+            echo "  Чтобы /strategy-session корректно ушёл в initial flow, добавьте маркер:"
+            echo "    bash $SCRIPT_DIR/scripts/migrate-initial-marker.sh"
+        fi
+    fi
 fi
 
 # === Done ===
