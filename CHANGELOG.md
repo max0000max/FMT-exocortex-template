@@ -5,6 +5,113 @@ All notable changes to FMT-exocortex-template will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
 
+## [0.29.11] — 2026-04-28
+
+### Added
+
+- **`deprecated_files` в манифесте** — `update.sh` теперь обнаруживает и удаляет устаревшие L1-файлы (WP-5 Ф-N артефакт #1). Добавлен раздел `deprecated_files` в `update-manifest.json` и `generate-manifest.sh`; `update.sh` показывает список и удаляет при применении. Первая партия: `strategist-agent/` (удалён), `roles/strategist/prompts+scripts/` (переехало в `.claude/skills/`), `LEARNING-PATH.md` (переехал в `docs/`), `memory/claude-md-maintenance.md` + `memory/wp-gate-lesson.md` (устарели).
+- **`/iwe-bug-report` скилл** — создаёт GitHub issue в FMT-exocortex-template через `gh issue create` (6 шагов: категоризация → детали → gh CLI check → issue → URL).
+- **`docs/onboarding/iwe-layers.md`** — онбординг-схема слоёв L1/L2/L3.
+
+## [0.29.10] — 2026-04-28
+
+### Fixed (Linux portability — bug-report от пилота Дмитрия)
+
+После 0.29.9 Дмитрий обнаружил два cross-platform бага при запуске `iwe-drift.sh` + `iwe-audit.sh` на Linux после `update.sh`:
+
+- **`scripts/iwe-drift.sh`** функция `dir_newest_mtime_days_ago` безусловно вызывала `xargs -0 stat -f %m` (BSD-only). На Linux GNU stat `-f` = filesystem info → текст «Inodes: ...» → арифметика падала с `unbound variable`.
+- **`scripts/iwe-audit.sh:227`** опечатка `$DRIFT_RC_` (trailing underscore) под `set -u` парсилась как имя переменной `DRIFT_RC_` → unbound при ненулевом exit code drift-скрипта.
+
+**Round 1 фикс ([`a967b7e`](https://github.com/TserenTserenov/FMT-exocortex-template/commit/a967b7e)):** cross-platform детект BSD/GNU stat через exit-check `if stat -f %m / >/dev/null 2>&1`; опечатка → `${DRIFT_RC}_`.
+
+**Round 2 фикс ([`9112c6a`](https://github.com/TserenTserenov/FMT-exocortex-template/commit/9112c6a)):** red-team subagent (Sonnet, isolated, adversarial deep audit) нашёл регрессию для Alpine/busybox — busybox stat толерантен к неизвестным флагам, exit-check возвращал 0 даже без поддержки `-f %m`. Финальный фикс:
+- Probe через **format-check** (`[[ "$_probe" =~ ^[0-9]+$ ]]`) вместо exit-check — отвергает мусор «Inodes: 99», даже если exit=0.
+- Detection вынесен на load-time → global array `STAT_MTIME_FLAGS` (один probe вместо повторов).
+- `stat $stat_fmt` (unquoted word-split) → `stat "${STAT_MTIME_FLAGS[@]}"` (массив, future-proof).
+- `mtime_days_ago` тоже переведён на массив (был тот же exit-check).
+- Probe на `/dev/null` вместо `/` (портативнее).
+
+**Verification:**
+- macOS smoke (BSD): `iwe-drift.sh --top 5` + `iwe-audit.sh` PASS.
+- macOS regression-mock (PATH override, fake busybox `stat -f` → «Inodes: 99», exit 0): format-check отверг мусор → GNU branch → drift-таблица c числовым lag. Alpine-регрессия закрыта.
+- `validate-template.sh` PASS.
+- Linux подтверждение от Дмитрия — ожидается после `update.sh`.
+
+**Мета-урок:** Round 1 author-blind на macOS закрыл оригинальные баги Дмитрия, но red-team round 2 нашёл регрессию для подмножества Linux (Alpine/busybox). Каждый «не-author» = новый класс ошибок; cross-platform pipeline (author macOS → пилот Linux/Alpine/WSL) требует валидации на каждой платформе деплоя. Кандидат в РП «IWE release discipline» (W19+): GitHub Actions matrix `[macos-latest, ubuntu-latest]` для validate-template.sh + smoke ключевых скриптов. Подтверждение мета-урока Round 1+2+3 Евгения (26 апр): «Two-pass sub-agent verification > one-pass; adversarial deep audit > standard QA».
+
+## [0.29.9] — 2026-04-28
+
+### Fixed (R5.5 — Suffix extensions native, WP-273 reopened по триггеру Евгения)
+
+После 0.29.7 Евгений заметил незакрытый contract gap: helper `.claude/scripts/load-extensions.sh` существует (R4.4 артефакт из 0.29.0/0.29.7), но **ни один skill/protocol его не вызывает** — все 13 EXTENSION POINT'ов всё ещё инструктируют `ls extensions/<protocol>.<hook>.md` (exact filename). `extensions/README.md` обещает wildcard suffix («Несколько расширений одного hook — загружаются в алфавитном порядке»), но кодом end-to-end это не закрыто. Это паттерн «Spec ↔ State drift» — helper готов, consumers не подключены.
+
+**Корневая причина:** R4.4 в WP-273 закоммитил helper, но автор пропустил «закрытие контракта» — точку, где skills/protocols фактически начинают вызывать loader. Suffix-файлы лежали бы пассивно, manifest-файлы оставались единственным рабочим способом — пилоты делали ручные manifest'ы с Read'ом suffix-файлов как workaround.
+
+**Фикс end-to-end (13 EXTENSION POINT'ов):**
+
+| Файл | Точки | Hook'и |
+|------|-------|--------|
+| `memory/protocol-open.md` | 1 | after |
+| `memory/protocol-close.md` | 2 | checks, after |
+| `.claude/skills/run-protocol/SKILL.md` | 3 (generic) | before, after, checks |
+| `.claude/skills/day-open/SKILL.md` | 3 | before, after, checks |
+| `.claude/skills/day-close/SKILL.md` | 4 (3 × `checks` + 1 × `before`) | before, checks |
+| `.claude/skills/month-close/SKILL.md` | 2 | before, after |
+
+Каждый паттерн `ls extensions/X.Y.md → Read` заменён на:
+```
+bash .claude/scripts/load-extensions.sh X Y → exit 0 → Read каждый файл из вывода (alphabetic) → выполнить
+```
+
+**Документация (контракт wildcard):**
+- `extensions/README.md` обновлён: 13 EP вместо 9 (добавлены `day-open.checks`, `day-close.before`, `month-close.before/after`); явный раздел про loader-native (с 0.29.9); manifest sorts ПОСЛЕ suffix lexico → пометка про `01-`, `02-` префиксы для управления порядком; пара unicode-битых ячеек таблицы починена (`ша�� 6д` → `шаг 6д`, `Ре��лексия` → `Рефлексия`).
+- `.claude/skills/extend/SKILL.md` каталог: 13 EP в таблице, явный раздел про suffix.
+
+**Smoke-test:** `setup/smoke-test-fresh-install.sh` Test 7 (3 sub-теста):
+- 7a — manifest + 2 suffix → 3 файла, alphabetic order `health → linear → manifest`.
+- 7b — hook без файлов → exit 1.
+- 7c — только suffix без manifest → exit 0.
+Всего 12 PASS / 2 FAIL (две FAIL — pre-existing R6.x known issues, не R5.5).
+
+**Эффект для пилотов:** теперь можно держать **только** suffix-файлы (`day-close.after.health.md` + `day-close.after.linear.md`) без manifest-файла. Если manifest существовал как workaround (Read'ом подгружал suffix) — его надо **удалить**, иначе loader подхватит и manifest, и suffix → двойное выполнение.
+
+### Why
+
+Закрытие WP-273 4-го корня провала «Spec ↔ State drift» через **end-to-end** замыкание контракта. R4.4 в 0.29.0/0.29.7 был наполовину сделан — helper без consumer'ов это не contract closure, а **обещание** в документации без реализации. Метапаттерн: «положить файл в репо ≠ закрыть контракт». R5.5 показал что Round-серии Евгения работают как валидатор: helper мог пролежать пассивным месяц, пока пилот первый раз попробовал бы suffix-файл и обнаружил.
+
+## [0.29.8] — 2026-04-28
+
+### Added (правило именования РП в WP-REGISTRY.md)
+
+CLAUDE.md §9 (Авторское — Именование РП): новый абзац «Название в WP-REGISTRY.md = ≤80 символов, только русский». Запрещено в названии: статус, даты, фазы, parenthetical-нарратив, английские пояснения, ссылки на другие РП. Контекст РП живёт в `inbox/WP-NNN-*.md` (активные) и `archive/wp-contexts/` (закрытые). Эталоны: WP-254, WP-258, WP-264. Допустимы кодовые идентификаторы и Pack-ID, если являются собственным именем артефакта (`projection-worker`, `DP.SC.125`, `cut-over`, `IWE`).
+
+### Why
+
+Распухшие названия в текущем реестре (WP-265…WP-278 разрослись до 500+ символов с английским нарративом, статусами фаз и метриками) перестали быть индексом и превратились в свалку handoff-ов. Правило-индекс возвращает реестр к роли каталога, а нарратив — на своё место в inbox-карточку РП.
+
+## [0.29.7] — 2026-04-27
+
+### Fixed (Round 5 Евгения — 4 платформенных хвоста после migration на 0.29.6)
+
+После прогона `update.sh` на 0.29.6 в реальном пилотском IWE Евгений нашёл 4 хвоста миграции. Все системные, разной глубины.
+
+**R5.1 — `migrate-to-runtime-target.sh --dry-run` падает на ERROR:** dry-run не копирует `.exocortex.env` в workspace (по логике «без записей»), но потом передаёт `build-runtime --env-file "$WORKSPACE_DIR/.exocortex.env"` принудительно — файла нет, build-runtime exit 2. Прямой `build-runtime --dry-run` с legacy env path работает.
+- **Фикс:** после Step 3 пересчитываю `ENV_FILE` по принципу «что реально есть на диске» (workspace → FMT legacy → exit). Dry-run использует существующий source без побочных эффектов.
+
+**R5.2 — `BACKUP_DIR: unbound variable` в clean-FMT ветке:** `BACKUP_DIR=` объявлялся только в `DIRTY_COUNT > 0`-ветке (Step 5), но печатался безусловно в финальном hint (line 205) под `set -eu` → bash валится при clean-FMT повторном запуске.
+- **Фикс:** инициализация `BACKUP_DIR=""` в начале + защита печати условием `[ -n "$BACKUP_DIR" ] && echo …`. Hint не показывается при clean-FMT — там и backup'а нет.
+
+**R5.3 — `~/.iwe-paths` не апгрейдится при миграции 0.28→0.29:** `setup.sh [4d]` пишет полный набор IWE_* переменных (включая `IWE_RUNTIME`), но миграция 0.28→0.29 идёт через `migrate-to-runtime-target.sh`, который вообще не трогает `~/.iwe-paths`. Старый файл остаётся без `export IWE_RUNTIME` → `install.sh` для launchd-ролей видит неполный env.
+- **Корневая причина:** OwnerIntegrity нарушен — source-of-truth для `~/.iwe-paths` дублировался в `setup.sh [4d]` и должен быть в migrate, но не был.
+- **Фикс системный:** новый хелпер `setup/install-iwe-paths.sh` — единственный writer `~/.iwe-paths`. Вызывается из `setup.sh [4d]` (рефакторинг) и из `migrate-to-runtime-target.sh` Step 6 (новый шаг). Идемпотентный, поддерживает `--dry-run`. update.sh может тоже его вызывать при следующих апгрейдах без новой логики.
+
+**R5.4 — strategist/extractor/synchronizer launchd plist'ы не экспортируют IWE_***: `EnvironmentVariables` в plist'ах содержал только `PATH+HOME`. Дочерний скрипт `strategist.sh` / `extractor.sh` / `scheduler.sh` под launchd не видел `IWE_TEMPLATE/IWE_WORKSPACE/IWE_RUNTIME` — launchctl не читает `~/.zshenv` / `~/.iwe-paths`. Скрипты падали в fallback-warning.
+- **Фикс:** в исходных plist'ах (`roles/*/scripts/launchd/*.plist`, substituted) добавлены ключи `IWE_TEMPLATE/IWE_WORKSPACE/IWE_RUNTIME` в `EnvironmentVariables` как `{{IWE_TEMPLATE}}/{{WORKSPACE_DIR}}/{{IWE_RUNTIME}}`-плейсхолдеры. build-runtime подставит per-host значения. Плисты становятся **self-contained**: launchd-runner'ы больше не зависят от shell env.
+
+### Why
+
+Round 5 закрыл паттерн «launchd зависит от shell env» (R5.4) — это устойчивый класс багов, который ловил Евгения каждый раз. Системная очистка через self-contained plist'ы делает дочерние скрипты воспроизводимыми независимо от того, как открывался процесс. R5.3 закрыл OwnerIntegrity-нарушение в генерации `~/.iwe-paths` — теперь один writer на все три триггера (setup/migrate/update).
+
 ## [0.29.6] — 2026-04-27
 
 ### Fixed (R6.1** — критический блокер от sub-agent post-release verify 0.29.5)
