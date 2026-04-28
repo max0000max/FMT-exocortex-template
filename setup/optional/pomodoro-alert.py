@@ -3,22 +3,23 @@
 
 Checks WakaTime durations API for continuous coding blocks.
 If active block > session_alert_minutes (from day-rhythm-config.yaml),
-sends a macOS notification to take a break.
+sends a desktop notification to take a break.
 
-Designed to run via launchd every 5 minutes during working hours.
+Cross-platform: macOS (osascript) and Linux (notify-send).
+
+Designed to run via launchd (macOS) or systemd timer (Linux) every 5 minutes
+during working hours.
 
 Prerequisites:
   - WakaTime installed and configured (~/.wakatime.cfg with api_key)
-  - macOS (uses osascript for notifications)
-
-Install:
-  1. Copy this script to your workspace
-  2. Install the launchd plist (see setup/optional/pomodoro-alert.plist)
-  3. Adjust memory/day-rhythm-config.yaml → pomodoro section
+  - macOS: osascript (built-in)
+  - Linux: notify-send (libnotify) — install via `sudo apt install libnotify-bin`
 """
 
 import json
+import platform
 import subprocess
+import sys
 import time
 from base64 import b64encode
 from pathlib import Path
@@ -129,9 +130,25 @@ def save_state(state: dict):
 
 
 def notify(title: str, message: str):
-    """Send macOS notification via osascript."""
-    script = f'display notification "{message}" with title "{title}" sound name "Purr"'
-    subprocess.run(["osascript", "-e", script], check=False)
+    """Send a desktop notification (cross-platform)."""
+    system = platform.system()
+    if system == "Darwin":
+        # macOS
+        script = f'display notification "{message}" with title "{title}" sound name "Purr"'
+        subprocess.run(["osascript", "-e", script], check=False)
+    elif system == "Linux":
+        # Linux (libnotify / notify-send)
+        # Ensure DISPLAY is set for systemd user services
+        env = dict(subprocess.os.environ)
+        if "DISPLAY" not in env:
+            env["DISPLAY"] = ":0"
+        subprocess.run(
+            ["notify-send", title, message, "--urgency=normal", "--expire-time=10000"],
+            check=False,
+            env=env,
+        )
+    else:
+        print(f"[{title}] {message}")
 
 
 def main():

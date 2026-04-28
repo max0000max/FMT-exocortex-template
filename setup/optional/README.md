@@ -4,27 +4,15 @@ Optional features that enhance IWE but are not required for core functionality.
 
 ## Pomodoro Break Reminders
 
-Monitors your coding activity via WakaTime and sends a macOS notification when you've been working continuously for too long.
+Monitors your coding activity via WakaTime and sends a desktop notification when you've been working continuously for too long.
 
 ### Prerequisites
 
 - **WakaTime** installed and configured (`~/.wakatime.cfg` with `api_key`)
-- **macOS** (uses `osascript` for notifications)
-- **Python 3** (pre-installed on macOS)
-
-### Installation
-
-```bash
-# 1. Replace placeholder with your workspace path
-sed "s|{{WORKSPACE_DIR}}|$HOME/IWE|g" setup/optional/pomodoro-alert.plist \
-  > ~/Library/LaunchAgents/com.exocortex.pomodoro-alert.plist
-
-# 2. Load the agent (starts immediately, runs every 5 min)
-launchctl load ~/Library/LaunchAgents/com.exocortex.pomodoro-alert.plist
-
-# 3. Verify it's running
-launchctl list | grep pomodoro
-```
+- **Python 3**
+- **Platform-specific notifier:**
+  - **macOS:** `osascript` (built-in)
+  - **Linux:** `notify-send` (`sudo apt install libnotify-bin`)
 
 ### Configuration
 
@@ -43,22 +31,67 @@ pomodoro:
 
 1. Every 5 minutes, the script calls WakaTime Durations API
 2. It calculates the current continuous work block (gaps > 5 min reset the counter)
-3. If continuous work exceeds `session_alert_minutes`, a macOS notification appears
+3. If continuous work exceeds `session_alert_minutes`, a desktop notification appears
 4. Alerts are suppressed for 10 minutes after each notification (no spam)
+
+### macOS Installation (launchd)
+
+```bash
+# 1. Replace placeholder with your workspace path
+sed "s|/home/user/IWE|$HOME/IWE|g" setup/optional/pomodoro-alert.plist \
+  > ~/Library/LaunchAgents/com.exocortex.pomodoro-alert.plist
+
+# 2. Load the agent (starts immediately, runs every 5 min)
+launchctl load ~/Library/LaunchAgents/com.exocortex.pomodoro-alert.plist
+
+# 3. Verify it's running
+launchctl list | grep pomodoro
+```
+
+### Linux Installation (systemd --user)
+
+```bash
+# 1. Copy unit files to systemd user directory
+mkdir -p ~/.config/systemd/user
+cp setup/optional/pomodoro-alert.service ~/.config/systemd/user/
+cp setup/optional/pomodoro-alert.timer ~/.config/systemd/user/
+
+# 2. Reload systemd daemon
+systemctl --user daemon-reload
+
+# 3. Enable and start the timer
+systemctl --user enable pomodoro-alert.timer
+systemctl --user start pomodoro-alert.timer
+
+# 4. Verify it's active
+systemctl --user list-timers pomodoro-alert.timer
+```
 
 ### Uninstall
 
+**macOS:**
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.exocortex.pomodoro-alert.plist
 rm ~/Library/LaunchAgents/com.exocortex.pomodoro-alert.plist
+```
+
+**Linux:**
+```bash
+systemctl --user stop pomodoro-alert.timer
+systemctl --user disable pomodoro-alert.timer
+rm ~/.config/systemd/user/pomodoro-alert.service
+rm ~/.config/systemd/user/pomodoro-alert.timer
+systemctl --user daemon-reload
 ```
 
 ### Files
 
 | File | Purpose |
 |------|---------|
-| `pomodoro-alert.py` | Python script (WakaTime API + macOS notification) |
-| `pomodoro-alert.plist` | launchd agent template (replace `{{WORKSPACE_DIR}}`) |
+| `pomodoro-alert.py` | Python script (WakaTime API + cross-platform notifications) |
+| `pomodoro-alert.plist` | launchd agent template (macOS) |
+| `pomodoro-alert.service` | systemd user service (Linux) |
+| `pomodoro-alert.timer` | systemd user timer — every 5 min, Mon–Fri 09–18 (Linux) |
 
 ---
 
