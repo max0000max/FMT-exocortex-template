@@ -1,0 +1,9 @@
+[Unit]
+Description=Pomodoro alert timer (every 5 min during work hours)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 09..18:00/5
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Pomodoro break reminder (WakaTime-based)
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/IWE/setup/optional/pomodoro-alert.py
+Environment=DISPLAY=:0
