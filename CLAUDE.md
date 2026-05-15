@@ -102,7 +102,7 @@
 
 Политика: ≤11 файлов. **Горячие** (читаются каждую сессию: CLAUDE.md, MEMORY.md, distinctions.md, formatting.md): ≤100 строк. Протоколы (lazy, по триггеру): ≤150. **Lazy-reference** (по ссылке из MEMORY.md, не каждую сессию — feedback_*, templates-*, reference_*): без жёсткого лимита, > 300 строк → пересмотреть.
 Temporal metadata: `valid_from: YYYY-MM-DD` (обязательно при создании), `superseded_by: <файл>` (при устаревании). Подробности → `protocol-work.md § 2`.
-Рабочая директория: `/home/user/IWE/` (не из sub-директорий). `/home/user/IWE/memory/` = симлинк на auto-memory.
+Рабочая директория: `{{HOME_DIR}}/IWE/` (не из sub-директорий). `{{HOME_DIR}}/IWE/memory/` = симлинк на auto-memory.
 
 ## 5. АрхГейт — ОБЯЗАТЕЛЬНАЯ оценка
 
@@ -163,7 +163,7 @@ Temporal metadata: `valid_from: YYYY-MM-DD` (обязательно при со�
 ### Именование
 
 - `DS-strategy` (не `DS-strategy`) — личный governance-хаб
-- `/home/user/IWE/` — рабочая директория
+- `{{HOME_DIR}}/IWE/` — рабочая директория
 
 ### Read-only репо
 
