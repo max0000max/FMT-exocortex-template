@@ -115,9 +115,20 @@ UPDATED_FILES=()
 UPDATED_LINES=()
 UNCHANGED=0
 
+# Count total files for progress display
+TOTAL_FILES=$(python3 -c "
+import json
+with open('$MANIFEST') as f:
+    data = json.load(f)
+print(len(data.get('files', [])))
+" 2>/dev/null || echo "?")
+DOWNLOAD_IDX=0
+
 # Parse manifest: extract path and desc for each file entry
 while IFS='|' read -r fpath fdesc; do
     [ -z "$fpath" ] && continue
+    DOWNLOAD_IDX=$((DOWNLOAD_IDX + 1))
+    printf "  (%s/%s) %s\r" "$DOWNLOAD_IDX" "$TOTAL_FILES" "$fpath"
 
     # Download remote file
     REMOTE_FILE="$TMPDIR_UPDATE/files/$fpath"
@@ -159,6 +170,7 @@ for entry in data.get('files', []):
     done
 }
 )
+printf "\n"
 
 # === Step 2b: Deprecated files (устаревшие L1-файлы к удалению) ===
 DEPRECATED_FOUND=()
@@ -617,9 +629,11 @@ for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
 done
 
 # === Step 5d: Repair-pass для critical runtime files ===
-# Закрывает gap «UNCHANGED ⇒ файл на месте». Если файл из manifest отсутствует
-# в целевой локации (workspace или CLAUDE_MEMORY_DIR), копируем из FMT даже если
-# хеш совпадает с remote (UNCHANGED). Срабатывает при ручном удалении / сбое предыдущего update.
+# Закрывает два gap-а:
+#   (1) «UNCHANGED ⇒ файл отсутствует» — ручное удаление / сбой предыдущего update.
+#   (2) «UNCHANGED ⇒ файл stale» — файл есть, но hash расходится с FMT source
+#       (возникает при частичном применении update, dirty workspace, или если workspace
+#       не перезаписывал существующий файл при прошлом update).
 # Выполняется ПОСЛЕ propagation чтобы repair не дублировал работу NEW_FILES/UPDATED_FILES.
 REPAIRED=0
 while IFS='|' read -r fpath _; do
@@ -630,10 +644,17 @@ while IFS='|' read -r fpath _; do
         memory/*.md|memory/*.yaml|memory/*.yml)
             fname=$(basename "$fpath")
             [ "$fname" = "MEMORY.md" ] && continue
-            if [ -d "$CLAUDE_MEMORY_DIR" ] && [ ! -f "$CLAUDE_MEMORY_DIR/$fname" ]; then
-                cp "$SCRIPT_DIR/$fpath" "$CLAUDE_MEMORY_DIR/$fname"
-                echo "  ⟲ $fpath → memory/ (repair)"
-                REPAIRED=$((REPAIRED + 1))
+            if [ -d "$CLAUDE_MEMORY_DIR" ]; then
+                mem_dst="$CLAUDE_MEMORY_DIR/$fname"
+                if [ ! -f "$mem_dst" ]; then
+                    cp "$SCRIPT_DIR/$fpath" "$mem_dst"
+                    echo "  ⟲ $fpath → memory/ (repair)"
+                    REPAIRED=$((REPAIRED + 1))
+                elif [ -r "$mem_dst" ] && [ "$(hash_file "$SCRIPT_DIR/$fpath")" != "$(hash_file "$mem_dst")" ]; then
+                    cp "$SCRIPT_DIR/$fpath" "$mem_dst"
+                    echo "  ⟲ $fpath → memory/ (stale repair)"
+                    REPAIRED=$((REPAIRED + 1))
+                fi
             fi
             ;;
         .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/lib/*|.claude/config/*|.claude/detectors/*|.claude/scripts/*|.claude/agents/*|.claude/settings.json)
@@ -643,6 +664,11 @@ while IFS='|' read -r fpath _; do
                 cp "$SCRIPT_DIR/$fpath" "$dst"
                 case "$fpath" in *.sh) chmod +x "$dst" ;; esac
                 echo "  ⟲ $fpath → workspace (repair)"
+                REPAIRED=$((REPAIRED + 1))
+            elif [ -r "$dst" ] && [ "$(hash_file "$SCRIPT_DIR/$fpath")" != "$(hash_file "$dst")" ]; then
+                cp "$SCRIPT_DIR/$fpath" "$dst"
+                case "$fpath" in *.sh) chmod +x "$dst" ;; esac
+                echo "  ⟲ $fpath → workspace (stale repair)"
                 REPAIRED=$((REPAIRED + 1))
             fi
             ;;
@@ -816,6 +842,20 @@ if $ROLES_CHANGED && command -v launchctl >/dev/null 2>&1; then
                 echo "  ○ $(basename "$role_dir"): переустановите вручную"
         fi
     done
+fi
+
+# === Step 6e: Update local manifest version to reflect installed upstream ===
+if [ -f "$SCRIPT_DIR/update-manifest.json" ] && command -v python3 >/dev/null 2>&1; then
+    python3 -c "
+import json
+path = '$SCRIPT_DIR/update-manifest.json'
+with open(path) as f:
+    data = json.load(f)
+data['version'] = '$UPSTREAM_VERSION'
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+" 2>/dev/null && echo "  • update-manifest.json: версия обновлена до $UPSTREAM_VERSION"
 fi
 
 # === Step 7: Commit changes ===
